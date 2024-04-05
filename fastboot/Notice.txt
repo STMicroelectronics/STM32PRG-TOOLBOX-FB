@@ -1,0 +1,3 @@
+The fastboot binaries were sourced from the SDK platform-tools release tarball.
+Pre-built binaries for fastboot, AdbWinApi.dll, and AdbWinUsbApi.dll for Windows, Linux, and macOS are downloaded from: 
+https://developer.android.com/studio/releases/platform-tools
