@@ -17,15 +17,16 @@
  */
 
 
-#include "Inc/ProgramManager.h"
+#include "ProgramManager.h"
 #include <chrono>
 
 using namespace std ;
 
-ProgramManager::ProgramManager(const std::string toolboxFolder)
+ProgramManager::ProgramManager(const std::string toolboxFolder, const std::string fastbootSerialNumber)
 {
     fastbootInterface = new Fastboot() ;
     fastbootInterface->toolboxFolder = toolboxFolder ;
+    fastbootInterface->fastbootSerialNumber = fastbootSerialNumber ;
     parsedTsvFile = nullptr;
 }
 
@@ -76,16 +77,23 @@ int ProgramManager::startFlashingService(const std::string inputTsvPath)
     {
         std::string patternNone = "none\"";
 
+        if((part.opt == "PED") && (part.binary == "none"))
+        {
+            ret = fastbootInterface->erasePartition(part.partName) ;
+            if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
+                break ;
+        }
+
         if((part.opt == "-") || (part.binary == "none") || (part.binary.size() >= patternNone.size() && part.binary.substr(part.binary.size() - patternNone.size()) == patternNone)) //ignore the field containing none keyword
             continue ;
 
-        if((part.partName == "fsbl1") && (part.offset == "boot1"))
+        if((part.partType == "Binary") && (part.offset == "boot1"))
         {
             ret = fastbootInterface->flashPartition("mmc1boot0", part.binary) ; //U-Boot's keyword to update this specific boot partition for eMMC memory: fsbl1
             if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
                 break ;
         }
-        else if ((part.partName == "fsbl2") && (part.offset == "boot2"))
+        else if ((part.partType == "Binary") && (part.offset == "boot2"))
         {
             ret = fastbootInterface->flashPartition("mmc1boot1", part.binary) ; //U-Boot's keyword to update this specific boot partition for eMMC memory: fsbl2
             if(ret != TOOLBOX_FASTBOOT_NO_ERROR)

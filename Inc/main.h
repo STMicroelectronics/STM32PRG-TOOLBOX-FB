@@ -26,7 +26,7 @@
 #include "DisplayManager.h"
 #include "Error.h"
 
-constexpr uint8_t  MAX_COMMANDS_NBR = 8 ;
+constexpr uint8_t  MAX_COMMANDS_NBR = 10 ;
 constexpr uint8_t  MAX_PARAMS_NBR = 5 ;
 
 struct command
@@ -38,7 +38,7 @@ struct command
 
 
 command argumentsList[MAX_COMMANDS_NBR];
-const std::string supportedCommandList[MAX_COMMANDS_NBR]={"-d", "--download", "?", "-h", "--help", "-v"} ;
+const std::string supportedCommandList[MAX_COMMANDS_NBR]={"-d", "--download", "?", "-h", "--help", "-v", "-sn", "--serial", "-l", "--list"} ;
 
 DisplayManager displayManager = DisplayManager::getInstance() ;
 int extractProgramCommands (int numberCommands, char* commands[]);

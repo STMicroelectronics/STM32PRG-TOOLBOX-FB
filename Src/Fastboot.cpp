@@ -17,8 +17,9 @@
  */
 
 #include <algorithm>
-#include "Inc/Fastboot.h"
+#include "Fastboot.h"
 #include <filesystem>
+#include <regex>
 
 Fastboot::Fastboot()
 {
@@ -37,7 +38,11 @@ int Fastboot::flashPartition(const std::string partitionName, const std::string 
     displayManager.print(MSG_NORMAL, L"Firmware path   : %s\n", partitionFirmwarePath.c_str());
 
     std::string fastbootCmd = getFastbootProgramPath().append("flash ") ;
-    fastbootCmd.append(partitionName).append(" ").append(partitionFirmwarePath).append("  2>&1") ;
+    fastbootCmd.append(partitionName).append(" ").append(partitionFirmwarePath) ;
+    if(this->fastbootSerialNumber != "")
+        fastbootCmd.append(" -s ").append(this->fastbootSerialNumber);
+
+    fastbootCmd.append("  2>&1");
 #ifdef _WIN32
     fastbootCmd = "\"" + fastbootCmd + "\"" ;
 #endif
@@ -66,13 +71,13 @@ int Fastboot::flashPartition(const std::string partitionName, const std::string 
     size_t pos = result.find(searchString);
     if (pos != std::string::npos)
     {
-        displayManager.print(MSG_GREEN, L"Patition %s : Download Done\n", partitionName.c_str()) ;
+        displayManager.print(MSG_GREEN, L"Partition %s : Download Done\n", partitionName.c_str()) ;
         return TOOLBOX_FASTBOOT_NO_ERROR ;
 
     }
     else
     {
-        displayManager.print(MSG_ERROR, L"Patition %s : Download Failed", partitionName.c_str()) ;
+        displayManager.print(MSG_ERROR, L"Partition %s : Download Failed", partitionName.c_str()) ;
         return TOOLBOX_FASTBOOT_ERROR_WRITE ;
     }
 }
@@ -85,7 +90,11 @@ int Fastboot::oemFormatMemory()
 {
     displayManager.print(MSG_NORMAL, L"Memory partitioning...\n") ;
 
-    std::string fastbootCmd = getFastbootProgramPath().append("oem format ").append("  2>&1")  ;
+    std::string fastbootCmd = getFastbootProgramPath().append("oem format ") ;
+    if(this->fastbootSerialNumber != "")
+        fastbootCmd.append(" -s ").append(this->fastbootSerialNumber);
+
+    fastbootCmd.append("  2>&1");
     displayManager.print(MSG_NORMAL, L"fastboot command: %s", fastbootCmd.data()) ;
 
     FILE* pipe = popen(fastbootCmd.c_str(), "r");
@@ -148,12 +157,26 @@ bool Fastboot::isUbootFastbootRunning()
     }
     pclose(pipe);
 
-    std::string searchString = "fastboot" ;
-    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    std::string searchString = "FASTBOOT" ;
+    std::transform(result.begin(), result.end(), result.begin(), ::toupper);
     size_t pos = result.find(searchString);
 
     if (pos != std::string::npos)
     {
+        /* The fastboot tool does not have a built-in command to list a specific device by its serial number,
+            Need to parse the result list and search for the device by its serial number mentioned with -sn command if it is present */
+        if(this->fastbootSerialNumber != "")
+        {
+            pos = result.find(this->fastbootSerialNumber);
+            if(pos == std::string::npos)
+            {
+                /* Device with this serial number is not present */
+                displayManager.print(MSG_WARNING, L"No U-Boot [%s] in Fastboot mode is running !", this->fastbootSerialNumber.data()) ;
+                return false ;
+            }
+
+        }
+
         displayManager.print(MSG_GREEN, L"U-Boot in Fastboot mode is running !") ;
         return true ;
 
@@ -187,4 +210,128 @@ std::string Fastboot::getFastbootProgramPath()
 
     displayManager.print(MSG_NORMAL, L"fastboot application path : %s", path.c_str()) ;
     return path;
+}
+
+/**
+ * @brief Fastboot::erasePartition : Erase a specific partition
+ * @param partitionName: The partition name to be erased.
+ * @return 0 if the operation is performed successfully, otherwise an error occurred.
+ */
+int Fastboot::erasePartition(const std::string partitionName)
+{
+    displayManager.print(MSG_NORMAL, L"Erasing partition [%s]...", partitionName.c_str());
+
+    std::string fastbootCmd = getFastbootProgramPath().append("erase ") ;
+    fastbootCmd.append(partitionName) ;
+    if(this->fastbootSerialNumber != "")
+        fastbootCmd.append(" -s ").append(this->fastbootSerialNumber);
+
+    fastbootCmd.append("  2>&1");
+#ifdef _WIN32
+    fastbootCmd = "\"" + fastbootCmd + "\"" ;
+#endif
+    displayManager.print(MSG_NORMAL, L"fastboot command: %s", fastbootCmd.data()) ;
+
+    FILE* pipe = popen(fastbootCmd.c_str(), "r");
+    if (pipe == nullptr)
+    {
+        displayManager.print(MSG_ERROR, L"Failed to open pipe") ;
+        return TOOLBOX_FASTBOOT_ERROR_NO_MEM;
+    }
+
+    char buffer[4096];
+    std::string result = "";
+    while (!feof(pipe))
+    {
+        if (fgets(buffer, 4096, pipe) != nullptr)
+        {
+            result += buffer;
+        }
+    }
+    pclose(pipe);
+
+    std::cout << result << std::endl ;
+    std::string searchString = "Finished.";
+    size_t pos = result.find(searchString);
+    if (pos != std::string::npos)
+    {
+        displayManager.print(MSG_GREEN, L"Partition %s : Erase Done\n", partitionName.c_str()) ;
+        return TOOLBOX_FASTBOOT_NO_ERROR ;
+
+    }
+    else
+    {
+        displayManager.print(MSG_ERROR, L"Partition %s : Erase Failed", partitionName.c_str()) ;
+        return TOOLBOX_FASTBOOT_ERROR_WRITE ;
+    }
+}
+
+
+/**
+ * @brief Fastboot::displayDevicesList : Print the list of available Fastboot devices.
+ * @return 0 if the operation is performed successfully, otherwise an error occurred.
+ */
+int Fastboot::displayDevicesList()
+{
+    std::string  fastbootCmd =  getFastbootProgramPath().append(" devices") ;
+    displayManager.print(MSG_NORMAL, L"fastboot command: %s", fastbootCmd.data()) ;
+
+    FILE* pipe = popen(fastbootCmd.c_str(), "r");
+    if (pipe == nullptr)
+    {
+        displayManager.print(MSG_ERROR, L"Failed to open pipe") ;
+        return TOOLBOX_FASTBOOT_ERROR_OTHER;
+    }
+
+    char buffer[4096];
+    std::string result = "";
+    while (!feof(pipe))
+    {
+        if (fgets(buffer, 4096, pipe) != nullptr)
+        {
+            result += buffer;
+        }
+    }
+    pclose(pipe);
+
+    std::vector<std::string> serialNumbers;
+    try
+    {
+        std::regex regex("([A-F0-9]+)\\s+(fastboot|Android Fastboot)");
+        std::smatch match;
+
+        std::string::const_iterator searchStart(result.cbegin());
+        while (std::regex_search(searchStart, result.cend(), match, regex))
+        {
+            std::string serial = match[1];
+            serialNumbers.push_back(serial);
+            searchStart = match.suffix().first;
+        }
+    }
+    catch (const std::regex_error& e)
+    {
+        displayManager.print(MSG_ERROR, L"Regex error: %s", e.what());
+        return false ;
+    }
+
+    // Check if any devices were found
+    if (serialNumbers.empty())
+    {
+        displayManager.print(MSG_NORMAL, L"") ;
+        displayManager.print(MSG_WARNING, L"No Fastboot devices found.") ;
+    }
+    else
+    {
+        displayManager.print(MSG_GREEN, L"\nFastboot devices List") ;
+        displayManager.print(MSG_NORMAL, L" Number of Fastboot devices: %d", serialNumbers.size()) ;
+        int deviceCount = 1;
+        for (const auto& serial : serialNumbers)
+        {
+            displayManager.print(MSG_NORMAL, L" [Device %d] : ", deviceCount) ;
+            displayManager.print(MSG_NORMAL, L"     Serial number : %s", serial.c_str()) ;
+            deviceCount++;
+        }
+    }
+
+    return TOOLBOX_FASTBOOT_NO_ERROR ;
 }

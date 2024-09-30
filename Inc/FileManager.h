@@ -26,8 +26,8 @@
 #include <fstream>
 #include <cstdint>
 
-#include"Inc/DisplayManager.h"
-#include "Inc/Error.h"
+#include"DisplayManager.h"
+#include "Error.h"
 
 constexpr uint8_t TSV_NB_COLUMNS = 7;
 

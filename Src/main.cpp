@@ -16,18 +16,18 @@
  * limitations under the License.
  */
 
-#include "Inc/main.h"
-#include "Inc/ProgramManager.h"
+#include "main.h"
+#include "ProgramManager.h"
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 
-
-std::string PRG_TOOLBOX_FASTBOOT_VERSION = "1.0.0";
-
+std::string PRG_TOOLBOX_FASTBOOT_VERSION = "2.0.0";
 std::string toolboxRootPath = "" ;
 
 int main(int argc, char* argv[])
 {
+    std::string fastbootSerialNumber = "";
+
     displayManager.print(MSG_NORMAL, L"      -------------------------------------------------------------------") ;
     displayManager.print(MSG_NORMAL, L"                      PRG-TOOLBOX-FB v%s                      ", PRG_TOOLBOX_FASTBOOT_VERSION.c_str()) ;
     displayManager.print(MSG_NORMAL, L"      -------------------------------------------------------------------\n\n") ;
@@ -50,7 +50,25 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    /* Search for commands */
+    /* Check the list of commands before starting the execution (Option that can be placed anywhere on the command line) */
+    for (int cmdIdx=0; cmdIdx < nCommands; cmdIdx++)
+    {
+        if(compareStrings(argumentsList[cmdIdx].cmd , "-sn", true) || compareStrings(argumentsList[cmdIdx].cmd , "--serial", true))
+        {
+            if((argumentsList[cmdIdx].nParams != 1))
+            {
+                displayManager.print(MSG_ERROR, L"Wrong parameters for -sn/--serial command") ;
+                showHelp();
+                return EXIT_FAILURE;
+            }
+
+            fastbootSerialNumber = argumentsList[cmdIdx].Params[0];
+            std::transform(fastbootSerialNumber.begin(), fastbootSerialNumber.end(), fastbootSerialNumber.begin(), ::toupper);
+            displayManager.print(MSG_NORMAL, L"Selected device serial number : %s", fastbootSerialNumber.data()) ;
+        }
+    }
+
+    /* Search and execute commands */
     for (int cmdIdx=0; cmdIdx < nCommands; cmdIdx++)
     {
         if (compareStrings(argumentsList[cmdIdx].cmd , "-?", true) || compareStrings(argumentsList[cmdIdx].cmd , "-h", true) || compareStrings(argumentsList[cmdIdx].cmd , "--help", true))
@@ -60,6 +78,21 @@ int main(int argc, char* argv[])
         else if(compareStrings(argumentsList[cmdIdx].cmd , "-v", true) || compareStrings(argumentsList[cmdIdx].cmd , "--version", true))
         {
             displayManager.print(MSG_NORMAL, L"PRG-TOOLBOX-FB version : %s",  PRG_TOOLBOX_FASTBOOT_VERSION.data()) ;
+        }
+        else if(compareStrings(argumentsList[cmdIdx].cmd , "-l", true) || compareStrings(argumentsList[cmdIdx].cmd , "--list", true))
+        {
+            Fastboot *fastbootInterface = new Fastboot() ;
+            fastbootInterface->toolboxFolder = toolboxRootPath ;
+            int ret = fastbootInterface->displayDevicesList();
+
+            delete fastbootInterface;
+            if(ret)
+                return EXIT_FAILURE;
+        }
+        else if(compareStrings(argumentsList[cmdIdx].cmd , "-sn", true) || compareStrings(argumentsList[cmdIdx].cmd , "--serial", true))
+        {
+            /* It has already been treated previously */
+            continue ;
         }
         else if(compareStrings(argumentsList[cmdIdx].cmd , "-d", true) || compareStrings(argumentsList[cmdIdx].cmd , "--download", true))
         {
@@ -77,12 +110,15 @@ int main(int argc, char* argv[])
                 return EXIT_FAILURE;
             }
 
-            ProgramManager *programMng = new ProgramManager(toolboxRootPath);
+            ProgramManager *programMng = new ProgramManager(toolboxRootPath, fastbootSerialNumber);
             int ret = programMng->startFlashingService(std::move(tsvFilePath) );
             delete programMng;
 
             if(ret)
+            {
+                displayManager.print(MSG_ERROR, L"Download command failed !") ;
                 return EXIT_FAILURE;
+            }
 
         }
         else
@@ -133,7 +169,7 @@ int extractProgramCommands(int numberCommands, char* commands[])
     if(numberCommands == 1) // No argument
     {
         showHelp();
-        return EXIT_FAILURE ;
+        return TOOLBOX_FASTBOOT_ERROR_WRONG_PARAM ;
     }
 
     uint8_t nCmds  =0;
@@ -201,6 +237,8 @@ void showHelp()
 
     displayManager.print(MSG_NORMAL, L"--help        -h   -?       : Show the help menu.") ;
     displayManager.print(MSG_NORMAL, L"--version          -v       : Display the program version.") ;
+    displayManager.print(MSG_NORMAL, L"--list             -l       : Display the list of available Fastboot devices.") ;
+    displayManager.print(MSG_NORMAL, L"--serial           -sn      : Select the USB device by serial number.") ;
     displayManager.print(MSG_NORMAL, L"--download         -d       : Prepare the device, flash/update the memory partitions over fastboot mode.") ;
     displayManager.print(MSG_NORMAL, L"       <filePath.tsv>       : TSV file path") ;
 

@@ -20,17 +20,20 @@
 #define FASTBOOT_H
 
 #include <iostream>
-#include "Inc/DisplayManager.h"
-#include "Inc/Error.h"
+#include "DisplayManager.h"
+#include "Error.h"
 
 class Fastboot
 {
 public:
     Fastboot();
     int flashPartition(const std::string partitionName, const std::string partitionFirmwarePath) ;
+    int erasePartition(const std::string partitionName);
     int oemFormatMemory() ;
     bool isUbootFastbootRunning() ;
+    int displayDevicesList() ;
     std::string toolboxFolder = "" ;
+    std::string fastbootSerialNumber = "" ;
 
 private:
     DisplayManager displayManager = DisplayManager::getInstance() ;

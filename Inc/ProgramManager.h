@@ -20,15 +20,15 @@
 #define PROGRAMMANAGER_H
 
 #include <iostream>
-#include "Inc/FileManager.h"
-#include "Inc/DisplayManager.h"
-#include "Inc/Fastboot.h"
-#include "Inc/Error.h"
+#include "FileManager.h"
+#include "DisplayManager.h"
+#include "Fastboot.h"
+#include "Error.h"
 
 class ProgramManager
 {
 public:
-    ProgramManager(const std::string toolboxFolder);
+    ProgramManager(const std::string toolboxFolder, const std::string fastbootSerialNumber = "");
     ~ProgramManager();
     int startFlashingService(const std::string inputTsvPath) ;
 

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include "Inc/DisplayManager.h"
+#include "DisplayManager.h"
 #ifdef _WIN32
 #include <windows.h>
 HANDLE  console;
@@ -131,6 +131,7 @@ void DisplayManager::displayMessage(messageType type, const wchar_t* str)
     }
 
     std::wcout << str << std::endl;
+    printf("\033[39;49m");
 
 #endif
 
