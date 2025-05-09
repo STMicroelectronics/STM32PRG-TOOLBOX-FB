@@ -21,7 +21,7 @@
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 
-std::string PRG_TOOLBOX_FASTBOOT_VERSION = "2.0.0";
+std::string PRG_TOOLBOX_FASTBOOT_VERSION = "2.1.0";
 std::string toolboxRootPath = "" ;
 
 int main(int argc, char* argv[])
