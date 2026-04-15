@@ -22,6 +22,7 @@
 #include <iostream>
 #include "DisplayManager.h"
 #include "Error.h"
+#include <cstdint>
 
 class Fastboot
 {
@@ -32,6 +33,8 @@ public:
     int oemFormatMemory() ;
     bool isUbootFastbootRunning() ;
     int displayDevicesList() ;
+    int oemBootbus(uint16_t width, uint16_t reset, uint16_t mode);
+    int oemPartconf(uint16_t bootAck, uint16_t activeEmmcBootPartition);
     std::string toolboxFolder = "" ;
     std::string fastbootSerialNumber = "" ;
 

@@ -335,3 +335,108 @@ int Fastboot::displayDevicesList()
 
     return TOOLBOX_FASTBOOT_NO_ERROR ;
 }
+
+/**
+ * @brief Fastboot::oemBootbus : Execute OEM-specific command to set the boot bus settings of the eMMC device
+ * @param width: boot_bus_width
+ * @param reset: reset_boot_bus_width
+ * @param mode: boot_mode
+ * @return 0 if the operation is performed successfully, otherwise an error occurred.
+ */
+int Fastboot::oemBootbus(uint16_t width, uint16_t reset, uint16_t mode)
+{
+    displayManager.print(MSG_NORMAL, L"OEM Bootbus...\n") ;
+
+    std::string fastbootCmd = getFastbootProgramPath().append("oem bootbus: ") ;
+    fastbootCmd.append(std::to_string(width)).append(" ").append(std::to_string(reset)).append(" ").append(std::to_string(mode)) ;
+    if(this->fastbootSerialNumber != "")
+        fastbootCmd.append(" -s ").append(this->fastbootSerialNumber);
+
+    fastbootCmd.append("  2>&1");
+    displayManager.print(MSG_NORMAL, L"fastboot command: %s", fastbootCmd.data()) ;
+
+    FILE* pipe = popen(fastbootCmd.c_str(), "r");
+    if (pipe == nullptr)
+    {
+        displayManager.print(MSG_ERROR, L"Failed to open pipe") ;
+        return TOOLBOX_FASTBOOT_ERROR_NO_MEM;
+    }
+
+    char buffer[4096];
+    std::string result = "";
+    while (!feof(pipe))
+    {
+        if (fgets(buffer, 4096, pipe) != nullptr)
+        {
+            result += buffer;
+        }
+    }
+    pclose(pipe);
+
+    std::cout << result << std::endl ;
+    std::string searchString = "Finished.";
+    size_t pos = result.find(searchString);
+    if (pos != std::string::npos)
+    {
+        displayManager.print(MSG_NORMAL, L"OEM Bootbus command is done with success.") ;
+        return TOOLBOX_FASTBOOT_NO_ERROR ;
+
+    }
+    else
+    {
+        displayManager.print(MSG_ERROR, L"Failed to execute OEM Bootbus command.") ;
+        return TOOLBOX_FASTBOOT_ERROR_WRITE ;
+    }
+}
+
+/**
+ * @brief Fastboot::oemPartconf : Execute OEM-specific command to configure the eMMC device
+ * @param bootAck : Enable boot acknowledge
+ * @param activeEmmcBootPartition : Which boot partition to use (1, 2 ...)
+ * @return 0 if the operation is performed successfully, otherwise an error occurred.
+ */
+int Fastboot::oemPartconf(uint16_t bootAck, uint16_t activeEmmcBootPartition)
+{
+    displayManager.print(MSG_NORMAL, L"OEM Partconf...\n") ;
+
+    std::string fastbootCmd = getFastbootProgramPath().append("oem partconf: ") ;
+    fastbootCmd.append(std::to_string(bootAck)).append(" ").append(std::to_string(activeEmmcBootPartition)) ;
+    if(this->fastbootSerialNumber != "")
+        fastbootCmd.append(" -s ").append(this->fastbootSerialNumber);
+
+    fastbootCmd.append("  2>&1");
+    displayManager.print(MSG_NORMAL, L"fastboot command: %s", fastbootCmd.data()) ;
+
+    FILE* pipe = popen(fastbootCmd.c_str(), "r");
+    if (pipe == nullptr)
+    {
+        displayManager.print(MSG_ERROR, L"Failed to open pipe") ;
+        return TOOLBOX_FASTBOOT_ERROR_NO_MEM;
+    }
+
+    char buffer[4096];
+    std::string result = "";
+    while (!feof(pipe))
+    {
+        if (fgets(buffer, 4096, pipe) != nullptr)
+        {
+            result += buffer;
+        }
+    }
+    pclose(pipe);
+
+    std::cout << result << std::endl ;
+    std::string searchString = "Finished.";
+    size_t pos = result.find(searchString);
+    if (pos != std::string::npos)
+    {
+        displayManager.print(MSG_NORMAL, L"OEM Partconf command is done with success.") ;
+        return TOOLBOX_FASTBOOT_NO_ERROR ;
+
+    }
+    else
+    {
+        displayManager.print(MSG_ERROR, L"Failed to execute OEM Partconf command.") ;
+        return TOOLBOX_FASTBOOT_ERROR_WRITE ;
+    }
+}

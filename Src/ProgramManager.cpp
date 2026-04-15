@@ -92,10 +92,26 @@ int ProgramManager::startFlashingService(const std::string inputTsvPath)
             ret = fastbootInterface->flashPartition("mmc1boot0", part.binary) ; //U-Boot's keyword to update this specific boot partition for eMMC memory: fsbl1
             if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
                 break ;
+
+            ret = fastbootInterface->oemBootbus(0, 0, 0);
+            if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
+                break ;
+
+            ret = fastbootInterface->oemPartconf(1, 1);
+            if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
+                break ;
         }
         else if ((part.partType == "Binary") && (part.offset == "boot2"))
         {
             ret = fastbootInterface->flashPartition("mmc1boot1", part.binary) ; //U-Boot's keyword to update this specific boot partition for eMMC memory: fsbl2
+            if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
+                break ;
+
+            ret = fastbootInterface->oemBootbus(0, 0, 0);
+            if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
+                break ;
+
+            ret = fastbootInterface->oemPartconf(1, 2);
             if(ret != TOOLBOX_FASTBOOT_NO_ERROR)
                 break ;
         }
